@@ -23,11 +23,10 @@
     }
     .crveno { color: #ff4444; }
     .crno { color: #00ff66; }
-    #historyDisplay {
-      margin-top: 20px;
-      font-size: 18px;
-      color: #ccc;
-      word-break: break-word;
+    #initialInput {
+      width: 80%;
+      font-size: 16px;
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -35,8 +34,8 @@
   <h1>Rulet Serija Tracker – Prediktivni Mod 🎯</h1>
 
   <div>
-    <label>Početni brojevi (najnoviji levo kao u kazinu):</label><br>
-    <input id="initialInput" type="text" size="70" placeholder="npr. 15, 27, 8, 19, 30, ...">
+    <label>Istorija brojeva (najnoviji levo kao u kazinu):</label><br>
+    <input id="initialInput" type="text" readonly>
   </div>
 
   <div>
@@ -47,7 +46,6 @@
   <button onclick="analyze()">Analiziraj</button>
 
   <div id="signal"></div>
-  <div id="historyDisplay">Uneti brojevi: </div>
 
   <script>
     let history = []
@@ -62,8 +60,7 @@
 
     function updateDisplay() {
       const reversed = [...history].reverse()
-      document.getElementById("historyDisplay").innerText =
-        "Uneti brojevi: " + reversed.join(", ")
+      document.getElementById("initialInput").value = reversed.join(", ")
     }
 
     function handleEnter(event) {
@@ -79,25 +76,9 @@
     }
 
     function analyze() {
-      const initial = document.getElementById("initialInput").value
+      if (history.length < 15) return
 
-      if (history.length === 0 && initial.trim() !== "") {
-        const nums = initial
-          .split(',')
-          .map(n => parseInt(n.trim()))
-          .filter(n => !isNaN(n) && n >= 0 && n <= 36)
-        if (nums.length < 30) {
-          alert("Unesi bar 30 brojeva.")
-          return
-        }
-        history = nums.slice().reverse()
-        updateDisplay()
-      }
-
-      const reversed = [...history].reverse()
-      const colors = reversed.map(getColor).filter(c => c === "R" || c === "B")
-      if (colors.length < 15) return
-
+      const colors = [...history].reverse().map(getColor).filter(c => c === "R" || c === "B")
       const currentPattern = colors.slice(0, 4).join("")
       let redHits = 0, blackHits = 0
 
