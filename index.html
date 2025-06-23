@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Rulet Serija Tracker</title>
+  <title>Rulet Serija Tracker – Prediktivni Mod</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -19,27 +19,35 @@
     #signal {
       font-size: 32px;
       font-weight: bold;
-      color: #00ff66;
       margin-top: 30px;
+    }
+    .crveno { color: #ff4444; }
+    .crno { color: #00ff66; }
+    #historyDisplay {
+      margin-top: 20px;
+      font-size: 18px;
+      color: #ccc;
+      word-break: break-word;
     }
   </style>
 </head>
 <body>
-  <h1>Rulet Serija Tracker 🎯</h1>
+  <h1>Rulet Serija Tracker – Prediktivni Mod 🎯</h1>
 
   <div>
-    <label>Početni brojevi (npr. 12, 7, 32, ...):</label><br>
-    <input id="initialInput" type="text" size="50" placeholder="unesi 30–50 brojeva odvojenih zarezima">
+    <label>Početni brojevi (najnoviji levo kao u kazinu):</label><br>
+    <input id="initialInput" type="text" size="70" placeholder="npr. 15, 27, 8, 19, 30, ...">
   </div>
 
   <div>
-    <label>Novi broj (nakon spina):</label><br>
-    <input id="newNumber" type="number" min="0" max="36">
+    <label>Novi broj:</label><br>
+    <input id="newNumber" type="number" min="0" max="36" onkeydown="handleEnter(event)">
   </div>
 
   <button onclick="analyze()">Analiziraj</button>
 
   <div id="signal"></div>
+  <div id="historyDisplay">Uneti brojevi: </div>
 
   <script>
     let history = []
@@ -49,72 +57,67 @@
       const blackNumbers = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
       if (redNumbers.includes(number)) return "R"
       if (blackNumbers.includes(number)) return "B"
-      return "0" // nula prekida sve
+      return "0"
     }
 
-    function isChaotic(colors) {
-      if (colors.length < 10) return false
-      let flips = 0
-      for (let i = colors.length - 10; i < colors.length - 1; i++) {
-        if (colors[i] !== colors[i + 1]) {
-          flips++
+    function updateDisplay() {
+      const reversed = [...history].reverse()
+      document.getElementById("historyDisplay").innerText =
+        "Uneti brojevi: " + reversed.join(", ")
+    }
+
+    function handleEnter(event) {
+      if (event.key === "Enter") {
+        const input = document.getElementById("newNumber")
+        const newNum = parseInt(input.value)
+        if (!isNaN(newNum) && newNum >= 0 && newNum <= 36) {
+          history.push(newNum)
+          updateDisplay()
+          input.value = ""
         }
       }
-      return flips >= 7 // 7+ promena u zadnjih 9 = haos
     }
 
     function analyze() {
       const initial = document.getElementById("initialInput").value
-      const newNum = parseInt(document.getElementById("newNumber").value)
 
       if (history.length === 0 && initial.trim() !== "") {
-        const nums = initial.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 0 && n <= 36)
+        const nums = initial
+          .split(',')
+          .map(n => parseInt(n.trim()))
+          .filter(n => !isNaN(n) && n >= 0 && n <= 36)
         if (nums.length < 30) {
           alert("Unesi bar 30 brojeva.")
           return
         }
-        history = nums
+        history = nums.slice().reverse()
+        updateDisplay()
       }
 
-      if (!isNaN(newNum)) {
-        history.push(newNum)
-      }
+      const reversed = [...history].reverse()
+      const colors = reversed.map(getColor).filter(c => c === "R" || c === "B")
+      if (colors.length < 15) return
 
-      const colors = history.map(getColor).filter(c => c === "R" || c === "B")
-      if (colors.length < 10) return
+      const currentPattern = colors.slice(0, 4).join("")
+      let redHits = 0, blackHits = 0
 
-      const lastColor = colors[colors.length - 1]
-
-      // Detekcija dužine aktuelne serije
-      let count = 1
-      for (let i = colors.length - 2; i >= 0; i--) {
-        if (colors[i] === lastColor) {
-          count++
-        } else {
-          break
+      for (let i = 0; i < colors.length - 7; i++) {
+        const pattern = colors.slice(i + 1, i + 5).join("")
+        if (pattern === currentPattern) {
+          const following = colors.slice(i + 5, i + 8)
+          if (following.every(c => c === "R")) redHits++
+          if (following.every(c => c === "B")) blackHits++
         }
       }
 
-      // Haotično okruženje → nema signala
-      if (count >= 3 && !isChaotic(colors)) {
-        const pattern = colors.slice(colors.length - count - 4, colors.length - count)
-        let matchCount = 0
-
-        for (let i = 4; i < colors.length - count; i++) {
-          const segment = colors.slice(i - 4, i)
-          const next = colors[i]
-          if (JSON.stringify(segment) === JSON.stringify(pattern) && next === lastColor) {
-            matchCount++
-          }
-        }
-
-        if (matchCount >= 2) {
-          document.getElementById("signal").innerText = "✅ KRENI"
-          return
-        }
+      const signalEl = document.getElementById("signal")
+      if (redHits >= 2) {
+        signalEl.innerHTML = "<span class='crveno'>✅ KRENI CRVENO</span>"
+      } else if (blackHits >= 2) {
+        signalEl.innerHTML = "<span class='crno'>✅ KRENI CRNO</span>"
+      } else {
+        signalEl.innerText = ""
       }
-
-      document.getElementById("signal").innerText = ""
     }
   </script>
 </body>
