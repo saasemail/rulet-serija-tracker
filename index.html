@@ -1,92 +1,121 @@
-// pages/index.tsx
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pametne Kolone – Rulet Tracker 🎯</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    h1 {
+      font-size: 28px;
+    }
+    #history {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 20px auto;
+      max-width: 90vw;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .num {
+      background: #333;
+      padding: 8px 12px;
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    input {
+      padding: 10px;
+      font-size: 16px;
+      width: 100px;
+      text-align: center;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
 
-'use client'
+  <h1>Pametne Kolone – Rulet Tracker 🎯</h1>
 
-import { useState, useEffect, useRef } from 'react'
+  <div id="history"></div>
 
-export default function Home() {
-  const [brojevi, setBrojevi] = useState<number[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
+  <input id="brojInput" type="number" placeholder="1–36" min="1" max="36" />
+  <button onclick="analiziraj()">Analiziraj</button>
 
-  // Detekcija i analiza na klik dugmeta
-  const analiziraj = () => {
-    if (brojevi.length < 6) return alert('Unesi više brojeva za analizu.')
-
-    // Brojevi sortirani po redu unosa (najnoviji levo)
-    const istorija = [...brojevi].reverse()
-
+  <script>
     const kolone = {
       prva: [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
       druga: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
-      treca: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]
+      treca: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+    };
+
+    let brojevi = [];
+
+    const input = document.getElementById("brojInput");
+    const historyDiv = document.getElementById("history");
+
+    function getKolona(br) {
+      if (kolone.prva.includes(br)) return 'prva';
+      if (kolone.druga.includes(br)) return 'druga';
+      if (kolone.treca.includes(br)) return 'treca';
+      return null;
     }
 
-    const kolonaZaBroj = (br: number) => {
-      if (kolone.prva.includes(br)) return 'prva'
-      if (kolone.druga.includes(br)) return 'druga'
-      if (kolone.treca.includes(br)) return 'treca'
-      return 'nepoznata'
-    }
-
-    const poslednjih = istorija.slice(0, 15) // uzimamo poslednjih 15 za pametnu analizu
-    const koloneIstorija = poslednjih.map(kolonaZaBroj)
-
-    // Tražimo najdužu odsutnu kolonu
-    const poslednjaKolona = kolonaZaBroj(poslednjih[0])
-    const brojac: Record<string, number> = { prva: 0, druga: 0, treca: 0 }
-
-    for (let i = 0; i < koloneIstorija.length; i++) {
-      brojac[koloneIstorija[i]]++
-    }
-
-    const najređaKolona = Object.entries(brojac).sort((a, b) => a[1] - b[1])[0][0]
-
-    if (najređaKolona !== poslednjaKolona) {
-      alert(`KRENI na ${najređaKolona.toUpperCase()} kolonu!`)
-    } else {
-      alert('Nema jasnog signala.')
-    }
-  }
-
-  // Handler za Enter unos
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputRef.current) {
-      const val = parseInt(inputRef.current.value)
-      if (!isNaN(val) && val >= 1 && val <= 36) {
-        setBrojevi(prev => [val, ...prev])
-        inputRef.current.value = ''
+    function updatePrikaz() {
+      historyDiv.innerHTML = '';
+      for (let i = 0; i < Math.min(brojevi.length, 15); i++) {
+        const el = document.createElement('div');
+        el.className = 'num';
+        el.textContent = brojevi[i];
+        historyDiv.appendChild(el);
       }
     }
-  }
 
-  return (
-    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-6 p-4">
-      <h1 className="text-3xl font-bold">Pametne Kolone – Rulet Tracker 🎯</h1>
+    function analiziraj() {
+      if (brojevi.length < 6) {
+        alert('Unesi više brojeva za analizu.');
+        return;
+      }
 
-      <div className="w-full max-w-xl">
-        <p className="mb-2 text-center">Početni brojevi (najnoviji levo kao u kazinu):</p>
-        <div className="w-full border border-gray-600 p-3 rounded text-lg bg-gray-900 overflow-x-auto whitespace-nowrap">
-          {brojevi.slice(0, 15).join(', ')}
-        </div>
-      </div>
+      let poslednjih = brojevi.slice(0, 15);
+      let brojac = { prva: 0, druga: 0, treca: 0 };
 
-      <div className="flex flex-col items-center space-y-4">
-        <input
-          type="number"
-          min={1}
-          max={36}
-          ref={inputRef}
-          onKeyDown={handleKeyDown}
-          className="text-black p-2 rounded text-lg"
-          placeholder="Novi broj"
-        />
-        <button
-          onClick={analiziraj}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
-        >
-          Analiziraj
-        </button>
-      </div>
-    </main>
-  )
-}
+      for (let br of poslednjih) {
+        let kol = getKolona(br);
+        if (kol) brojac[kol]++;
+      }
+
+      let najredjaKolona = Object.entries(brojac).sort((a, b) => a[1] - b[1])[0][0];
+      let poslednjaKolona = getKolona(brojevi[0]);
+
+      if (najredjaKolona !== poslednjaKolona) {
+        alert(`KRENI na ${najredjaKolona.toUpperCase()} kolonu!`);
+      } else {
+        alert('Nema jasnog signala.');
+      }
+    }
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const val = parseInt(input.value);
+        if (!isNaN(val) && val >= 1 && val <= 36) {
+          brojevi.unshift(val);
+          updatePrikaz();
+        }
+        input.value = "";
+      }
+    });
+  </script>
+
+</body>
+</html>
