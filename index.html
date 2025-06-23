@@ -1,110 +1,92 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pametne Kolone – Rulet Tracker</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #f8f9fa; }
-    input, button { font-size: 1.2em; padding: 8px; margin: 5px; }
-    #history { margin-top: 10px; font-size: 1.1em; }
-    .bold { font-weight: bold; color: #222; }
-    #output { font-size: 1.5em; margin-top: 15px; }
-  </style>
-</head>
-<body>
-  <h2>Pametne Kolone – Rulet Tracker</h2>
-  <label for="newNumber">Unesi novi broj (1–36):</label><br>
-  <input type="number" id="newNumber" min="1" max="36">
-  <button onclick="addNumber()">Unesi</button>
-  <button onclick="analyze()">Analiziraj</button>
+// pages/index.tsx
 
-  <div id="history" class="bold">Uneti brojevi: </div>
-  <div id="output"></div>
+'use client'
 
-  <script>
-    const numbers = []
+import { useState, useEffect, useRef } from 'react'
 
-    function addNumber() {
-      const input = document.getElementById("newNumber")
-      const num = parseInt(input.value)
-      if (!isNaN(num) && num >= 1 && num <= 36) {
-        numbers.unshift(num) // novi broj ide levo
-        input.value = ""
-        updateHistory()
-      }
+export default function Home() {
+  const [brojevi, setBrojevi] = useState<number[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Detekcija i analiza na klik dugmeta
+  const analiziraj = () => {
+    if (brojevi.length < 6) return alert('Unesi više brojeva za analizu.')
+
+    // Brojevi sortirani po redu unosa (najnoviji levo)
+    const istorija = [...brojevi].reverse()
+
+    const kolone = {
+      prva: [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
+      druga: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
+      treca: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36]
     }
 
-    function updateHistory() {
-      document.getElementById("history").innerText = "Uneti brojevi: " + numbers.join(", ")
+    const kolonaZaBroj = (br: number) => {
+      if (kolone.prva.includes(br)) return 'prva'
+      if (kolone.druga.includes(br)) return 'druga'
+      if (kolone.treca.includes(br)) return 'treca'
+      return 'nepoznata'
     }
 
-    function getColumn(num) {
-      if (num >= 1 && num <= 12) return 1
-      if (num >= 13 && num <= 24) return 2
-      if (num >= 25 && num <= 36) return 3
-      return 0
+    const poslednjih = istorija.slice(0, 15) // uzimamo poslednjih 15 za pametnu analizu
+    const koloneIstorija = poslednjih.map(kolonaZaBroj)
+
+    // Tražimo najdužu odsutnu kolonu
+    const poslednjaKolona = kolonaZaBroj(poslednjih[0])
+    const brojac: Record<string, number> = { prva: 0, druga: 0, treca: 0 }
+
+    for (let i = 0; i < koloneIstorija.length; i++) {
+      brojac[koloneIstorija[i]]++
     }
 
-    function analyze() {
-      const output = document.getElementById("output")
-      if (numbers.length < 10) {
-        output.innerText = "Unesi bar 10 brojeva za analizu."
-        return
-      }
+    const najređaKolona = Object.entries(brojac).sort((a, b) => a[1] - b[1])[0][0]
 
-      const skipMap = {1: 0, 2: 0, 3: 0}
-      const patternMap = {1: [], 2: [], 3: []}
+    if (najređaKolona !== poslednjaKolona) {
+      alert(`KRENI na ${najređaKolona.toUpperCase()} kolonu!`)
+    } else {
+      alert('Nema jasnog signala.')
+    }
+  }
 
-      // Napuni istoriju kolona
-      const columnHistory = numbers.map(getColumn)
-
-      // Traži koliko puta su kolone bile preskočene 3x i onda pogodile
-      for (let i = 3; i < columnHistory.length - 1; i++) {
-        for (let c = 1; c <= 3; c++) {
-          if (
-            columnHistory[i] !== c &&
-            columnHistory[i - 1] !== c &&
-            columnHistory[i - 2] !== c &&
-            columnHistory[i + 1] === c
-          ) {
-            patternMap[c].push(true)
-          } else if (
-            columnHistory[i] !== c &&
-            columnHistory[i - 1] !== c &&
-            columnHistory[i - 2] !== c
-          ) {
-            patternMap[c].push(false)
-          }
-        }
-      }
-
-      let bestCol = null
-      let bestRatio = 0
-
-      for (let c = 1; c <= 3; c++) {
-        const total = patternMap[c].length
-        const hits = patternMap[c].filter(x => x).length
-        const ratio = total > 0 ? hits / total : 0
-
-        if (ratio >= 0.6) {
-          const last3 = columnHistory.slice(0, 3)
-          if (!last3.includes(c)) {
-            if (ratio > bestRatio) {
-              bestRatio = ratio
-              bestCol = c
-            }
-          }
-        }
-      }
-
-      if (bestCol) {
-        let name = bestCol === 1 ? "PRVA" : bestCol === 2 ? "SREDNJA" : "VELIKA"
-        output.innerText = `✅ KRENI: ${name} KOLONA`
-      } else {
-        output.innerText = "❌ NEMA SIGURNOG ULAZA"
+  // Handler za Enter unos
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inputRef.current) {
+      const val = parseInt(inputRef.current.value)
+      if (!isNaN(val) && val >= 1 && val <= 36) {
+        setBrojevi(prev => [val, ...prev])
+        inputRef.current.value = ''
       }
     }
-  </script>
-</body>
-</html>
+  }
+
+  return (
+    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center space-y-6 p-4">
+      <h1 className="text-3xl font-bold">Pametne Kolone – Rulet Tracker 🎯</h1>
+
+      <div className="w-full max-w-xl">
+        <p className="mb-2 text-center">Početni brojevi (najnoviji levo kao u kazinu):</p>
+        <div className="w-full border border-gray-600 p-3 rounded text-lg bg-gray-900 overflow-x-auto whitespace-nowrap">
+          {brojevi.slice(0, 15).join(', ')}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center space-y-4">
+        <input
+          type="number"
+          min={1}
+          max={36}
+          ref={inputRef}
+          onKeyDown={handleKeyDown}
+          className="text-black p-2 rounded text-lg"
+          placeholder="Novi broj"
+        />
+        <button
+          onClick={analiziraj}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded"
+        >
+          Analiziraj
+        </button>
+      </div>
+    </main>
+  )
+}
