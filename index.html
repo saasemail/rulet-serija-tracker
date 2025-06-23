@@ -49,7 +49,18 @@
       const blackNumbers = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
       if (redNumbers.includes(number)) return "R"
       if (blackNumbers.includes(number)) return "B"
-      return "0"
+      return "0" // nula prekida sve
+    }
+
+    function isChaotic(colors) {
+      if (colors.length < 10) return false
+      let flips = 0
+      for (let i = colors.length - 10; i < colors.length - 1; i++) {
+        if (colors[i] !== colors[i + 1]) {
+          flips++
+        }
+      }
+      return flips >= 7 // 7+ promena u zadnjih 9 = haos
     }
 
     function analyze() {
@@ -70,8 +81,11 @@
       }
 
       const colors = history.map(getColor).filter(c => c === "R" || c === "B")
+      if (colors.length < 10) return
+
       const lastColor = colors[colors.length - 1]
 
+      // Detekcija dužine aktuelne serije
       let count = 1
       for (let i = colors.length - 2; i >= 0; i--) {
         if (colors[i] === lastColor) {
@@ -81,13 +95,14 @@
         }
       }
 
-      if (count >= 3) {
-        let pattern = colors.slice(colors.length - count - 3, colors.length - count)
+      // Haotično okruženje → nema signala
+      if (count >= 3 && !isChaotic(colors)) {
+        const pattern = colors.slice(colors.length - count - 4, colors.length - count)
         let matchCount = 0
 
-        for (let i = 3; i < colors.length - count; i++) {
-          let segment = colors.slice(i - 3, i)
-          let next = colors[i]
+        for (let i = 4; i < colors.length - count; i++) {
+          const segment = colors.slice(i - 4, i)
+          const next = colors[i]
           if (JSON.stringify(segment) === JSON.stringify(pattern) && next === lastColor) {
             matchCount++
           }
