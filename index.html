@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Rulet Serija Tracker</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #111;
+      color: #fff;
+      text-align: center;
+      padding: 40px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+    }
+    #signal {
+      font-size: 32px;
+      font-weight: bold;
+      color: #00ff66;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Rulet Serija Tracker 🎯</h1>
+
+  <div>
+    <label>Početni brojevi (npr. 12, 7, 32, ...):</label><br>
+    <input id="initialInput" type="text" size="50" placeholder="unesi 30–50 brojeva odvojenih zarezima">
+  </div>
+
+  <div>
+    <label>Novi broj (nakon spina):</label><br>
+    <input id="newNumber" type="number" min="0" max="36">
+  </div>
+
+  <button onclick="analyze()">Analiziraj</button>
+
+  <div id="signal"></div>
+
+  <script>
+    let history = []
+
+    function getColor(number) {
+      const redNumbers = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]
+      const blackNumbers = [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
+      if (redNumbers.includes(number)) return "R"
+      if (blackNumbers.includes(number)) return "B"
+      return "0"
+    }
+
+    function analyze() {
+      const initial = document.getElementById("initialInput").value
+      const newNum = parseInt(document.getElementById("newNumber").value)
+
+      if (history.length === 0 && initial.trim() !== "") {
+        const nums = initial.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 0 && n <= 36)
+        if (nums.length < 30) {
+          alert("Unesi bar 30 brojeva.")
+          return
+        }
+        history = nums
+      }
+
+      if (!isNaN(newNum)) {
+        history.push(newNum)
+      }
+
+      const colors = history.map(getColor).filter(c => c === "R" || c === "B")
+      const lastColor = colors[colors.length - 1]
+
+      let count = 1
+      for (let i = colors.length - 2; i >= 0; i--) {
+        if (colors[i] === lastColor) {
+          count++
+        } else {
+          break
+        }
+      }
+
+      if (count >= 3) {
+        let pattern = colors.slice(colors.length - count - 3, colors.length - count)
+        let matchCount = 0
+
+        for (let i = 3; i < colors.length - count; i++) {
+          let segment = colors.slice(i - 3, i)
+          let next = colors[i]
+          if (JSON.stringify(segment) === JSON.stringify(pattern) && next === lastColor) {
+            matchCount++
+          }
+        }
+
+        if (matchCount >= 2) {
+          document.getElementById("signal").innerText = "✅ KRENI"
+          return
+        }
+      }
+
+      document.getElementById("signal").innerText = ""
+    }
+  </script>
+</body>
+</html>
