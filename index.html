@@ -1,121 +1,175 @@
 <!DOCTYPE html>
-<html lang="sr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Pametne Kolone – Rulet Tracker 🎯</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rulet Serija Tracker – PRO</title>
   <style>
     body {
-      background: #111;
-      color: #fff;
       font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 40px;
+      padding: 2rem;
+      background: #f0f0f0;
     }
     h1 {
-      font-size: 28px;
+      text-align: center;
     }
     #history {
       display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin: 20px auto;
-      max-width: 90vw;
-      overflow: hidden;
-      white-space: nowrap;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
     }
-    .num {
-      background: #333;
+    .ball {
       padding: 8px 12px;
-      border-radius: 5px;
-      font-weight: bold;
+      border-radius: 20px;
+      background: #ddd;
     }
-    input {
+    .red {
+      background: crimson;
+      color: white;
+    }
+    .black {
+      background: black;
+      color: white;
+    }
+    .green {
+      background: green;
+      color: white;
+    }
+    button, input {
+      margin-top: 10px;
       padding: 10px;
       font-size: 16px;
-      width: 100px;
-      text-align: center;
     }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      margin-left: 10px;
-      cursor: pointer;
+    #result {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 18px;
     }
   </style>
 </head>
 <body>
+  <h1>Rulet Serija Tracker – PRO 🎯</h1>
 
-  <h1>Pametne Kolone – Rulet Tracker 🎯</h1>
-
+  <label for="initialNumbers">Brojevi (najnoviji levo):</label>
   <div id="history"></div>
 
-  <input id="brojInput" type="number" placeholder="1–36" min="1" max="36" />
-  <button onclick="analiziraj()">Analiziraj</button>
+  <input type="number" id="newNumber" placeholder="Novi broj" />
+  <button onclick="analyze()">🔍 Analiziraj</button>
+  <button onclick="markDealerChange()">♻️ Reset Krupije</button>
+  <p id="result"></p>
 
   <script>
-    const kolone = {
-      prva: [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34],
-      druga: [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
-      treca: [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+    let fullHistory = [];
+    let ignoreNext = 0;
+
+    const colorMap = {
+      green: [0],
+      red: [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],
+      black: [2,4,6,8,10,11,13,15,17,20,22,24,26,28,29,31,33,35]
     };
 
-    let brojevi = [];
-
-    const input = document.getElementById("brojInput");
-    const historyDiv = document.getElementById("history");
-
-    function getKolona(br) {
-      if (kolone.prva.includes(br)) return 'prva';
-      if (kolone.druga.includes(br)) return 'druga';
-      if (kolone.treca.includes(br)) return 'treca';
-      return null;
+    function getColor(n) {
+      if (colorMap.red.includes(n)) return 'red';
+      if (colorMap.black.includes(n)) return 'black';
+      return 'green';
     }
 
-    function updatePrikaz() {
+    function markDealerChange() {
+      ignoreNext = 5;
+    }
+
+    function updateDisplay() {
+      const historyDiv = document.getElementById("history");
       historyDiv.innerHTML = '';
-      for (let i = 0; i < Math.min(brojevi.length, 15); i++) {
-        const el = document.createElement('div');
-        el.className = 'num';
-        el.textContent = brojevi[i];
-        historyDiv.appendChild(el);
-      }
+      fullHistory.forEach(n => {
+        const ball = document.createElement('div');
+        ball.className = `ball ${getColor(n)}`;
+        ball.innerText = n;
+        historyDiv.appendChild(ball);
+      });
     }
 
-    function analiziraj() {
-      if (brojevi.length < 6) {
-        alert('Unesi više brojeva za analizu.');
+    document.getElementById("newNumber").addEventListener("keyup", function (e) {
+      if (e.key === "Enter") {
+        const val = parseInt(e.target.value);
+        if (!isNaN(val) && val >= 0 && val <= 36) {
+          fullHistory.unshift(val);
+          if (fullHistory.length > 300) fullHistory.pop();
+          updateDisplay();
+          e.target.value = '';
+        }
+      }
+    });
+
+    function estimateBaselineRate(history) {
+      let streaks = 0;
+      for (let i = 0; i < history.length - 2; i++) {
+        const c1 = getColor(history[i]);
+        const c2 = getColor(history[i+1]);
+        const c3 = getColor(history[i+2]);
+        if (c1 === c2 && c2 === c3 && c1 !== 'green') streaks++;
+      }
+      return streaks / (history.length - 2);
+    }
+
+    function analyze() {
+      const result = document.getElementById("result");
+      result.innerText = "";
+
+      if (fullHistory.length < 25 + ignoreNext) {
+        result.innerText = "⚠️ Nema dovoljno podataka za analizu.";
         return;
       }
 
-      let poslednjih = brojevi.slice(0, 15);
-      let brojac = { prva: 0, druga: 0, treca: 0 };
+      const recentIndex = ignoreNext;
+      const lengthsToTest = [4, 5, 6];
+      let bestPattern = null;
+      let bestStats = { matchCount: 0, successCount: 0, collapseCount: 0, probability: 0, collapseProb: 0 };
 
-      for (let br of poslednjih) {
-        let kol = getKolona(br);
-        if (kol) brojac[kol]++;
+      for (let len of lengthsToTest) {
+        const pattern = fullHistory.slice(recentIndex, recentIndex + len).map(getColor).join('-');
+        let matches = 0, successes = 0, collapses = 0;
+
+        for (let i = recentIndex + len; i < fullHistory.length - len - 3; i++) {
+          const sample = fullHistory.slice(i, i + len).map(getColor).join('-');
+          const after = fullHistory.slice(i + len, i + len + 3).map(getColor);
+
+          if (sample === pattern) {
+            matches++;
+            const first = after[0];
+            if (first !== 'green' && after[1] === first && after[2] === first) successes++;
+            if (
+              after[0] !== getColor(fullHistory[recentIndex]) &&
+              after[1] !== getColor(fullHistory[recentIndex]) &&
+              after[2] !== getColor(fullHistory[recentIndex])
+            ) {
+              collapses++;
+            }
+          }
+        }
+
+        if (matches >= 3) {
+          const probability = successes / matches;
+          const collapseProb = collapses / matches;
+          if (probability > bestStats.probability) {
+            bestPattern = pattern;
+            bestStats = { matchCount: matches, successCount: successes, collapseCount: collapses, probability, collapseProb };
+          }
+        }
       }
 
-      let najredjaKolona = Object.entries(brojac).sort((a, b) => a[1] - b[1])[0][0];
-      let poslednjaKolona = getKolona(brojevi[0]);
+      const nextColor = getColor(fullHistory[recentIndex]);
+      const baselineRate = estimateBaselineRate(fullHistory);
 
-      if (najredjaKolona !== poslednjaKolona) {
-        alert(`KRENI na ${najredjaKolona.toUpperCase()} kolonu!`);
+      if (bestStats.matchCount >= 5 && bestStats.probability > baselineRate + 0.15) {
+        result.innerText = `✅ STREAK SIGNAL (${nextColor.toUpperCase()}): ${bestStats.successCount}/${bestStats.matchCount} (${(bestStats.probability*100).toFixed(1)}%) vs baseline ${(baselineRate*100).toFixed(1)}%`;
+      } else if (bestStats.collapseProb > 0.6 && bestStats.matchCount >= 5) {
+        result.innerText = `⚠️ COLLAPSE WARNING – Suprotna boja moguća (${(bestStats.collapseProb*100).toFixed(1)}%)`;
       } else {
-        alert('Nema jasnog signala.');
+        result.innerText = "❌ Nema validnog signala u ovom trenutku.";
       }
     }
-
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        const val = parseInt(input.value);
-        if (!isNaN(val) && val >= 1 && val <= 36) {
-          brojevi.unshift(val);
-          updatePrikaz();
-        }
-        input.value = "";
-      }
-    });
   </script>
-
 </body>
 </html>
