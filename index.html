@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rulet Serija Tracker – PRO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rulet Serija Tracker – Ver. 3</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,6 +20,9 @@
       margin-top: 10px;
       max-height: 200px;
       overflow-y: auto;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
     }
     .ball {
       padding: 8px 12px;
@@ -51,11 +54,9 @@
   </style>
 </head>
 <body>
-  <h1>Rulet Serija Tracker – PRO 🎯</h1>
-
+  <h1>Rulet Serija Tracker – Ver. 3 🎯</h1>
   <label for="newNumber">Brojevi (najnoviji levo):</label>
   <div id="history"></div>
-
   <input type="number" id="newNumber" placeholder="Novi broj" />
   <button onclick="analyze()">🔍 Analiziraj</button>
   <button onclick="markDealerChange()">♻️ Reset Krupije</button>
@@ -84,9 +85,7 @@
     function updateDisplay() {
       const historyDiv = document.getElementById("history");
       historyDiv.innerHTML = '';
-
-      const visibleHistory = fullHistory.slice(0, 50); // prikaz samo zadnjih 50
-      visibleHistory.forEach(n => {
+      fullHistory.forEach(n => {
         const ball = document.createElement('div');
         ball.className = `ball ${getColor(n)}`;
         ball.innerText = n;
@@ -98,7 +97,8 @@
       if (e.key === "Enter") {
         const val = parseInt(e.target.value);
         if (!isNaN(val) && val >= 0 && val <= 36) {
-          fullHistory.unshift(val); // najnoviji levo
+          fullHistory.unshift(val);
+          if (fullHistory.length > 300) fullHistory.pop();
           updateDisplay();
           e.target.value = '';
         }
@@ -109,8 +109,8 @@
       let streaks = 0;
       for (let i = 0; i < history.length - 2; i++) {
         const c1 = getColor(history[i]);
-        const c2 = getColor(history[i + 1]);
-        const c3 = getColor(history[i + 2]);
+        const c2 = getColor(history[i+1]);
+        const c3 = getColor(history[i+2]);
         if (c1 === c2 && c2 === c3 && c1 !== 'green') streaks++;
       }
       return streaks / (history.length - 2);
@@ -121,53 +121,37 @@
       result.innerText = "";
 
       if (fullHistory.length < 25 + ignoreNext) {
-        result.innerText = "❌ Nema validnog signala u ovom trenutku.";
+        result.innerText = "⚠️ Nema dovoljno podataka za analizu.";
         return;
       }
 
       const recentIndex = ignoreNext;
-      const lengthsToTest = [4, 5, 6];
-      let bestPattern = null;
-      let bestStats = { matchCount: 0, successCount: 0, collapseCount: 0, probability: 0, collapseProb: 0 };
+      const c0 = getColor(fullHistory[recentIndex]);
+      const c1 = getColor(fullHistory[recentIndex + 1]);
 
-      for (let len of lengthsToTest) {
-        const pattern = fullHistory.slice(recentIndex, recentIndex + len).map(getColor).join('-');
-        let matches = 0, successes = 0, collapses = 0;
-
-        for (let i = recentIndex + len; i < fullHistory.length - len - 3; i++) {
-          const sample = fullHistory.slice(i, i + len).map(getColor).join('-');
-          const after = fullHistory.slice(i + len, i + len + 3).map(getColor);
-
-          if (sample === pattern) {
+      // Potencijalna serija nakon 1 ista boja
+      if (c0 === c1 && c0 !== 'green') {
+        let matches = 0, extended = 0;
+        for (let i = recentIndex + 2; i < fullHistory.length - 2; i++) {
+          const a = getColor(fullHistory[i]);
+          const b = getColor(fullHistory[i+1]);
+          if (a === b && a === c0) {
+            const next = getColor(fullHistory[i+2]);
             matches++;
-            const first = after[0];
-            if (first !== 'green' && after[1] === first && after[2] === first) successes++;
-            if (after[0] !== getColor(fullHistory[recentIndex]) &&
-                after[1] !== getColor(fullHistory[recentIndex]) &&
-                after[2] !== getColor(fullHistory[recentIndex])) collapses++;
+            if (next === c0) extended++;
           }
         }
 
-        if (matches >= 3) {
-          const probability = successes / matches;
-          const collapseProb = collapses / matches;
-          if (probability > bestStats.probability) {
-            bestPattern = pattern;
-            bestStats = { matchCount: matches, successCount: successes, collapseCount: collapses, probability, collapseProb };
-          }
+        const baseline = estimateBaselineRate(fullHistory);
+        const prob = extended / matches;
+
+        if (matches >= 5 && prob > baseline + 0.15) {
+          result.innerText = `⚠️ Moguća serija ${c0.toUpperCase()} – ${extended}/${matches} (${(prob*100).toFixed(1)}%) vs baseline ${(baseline*100).toFixed(1)}%`;
+          return;
         }
       }
 
-      const nextColor = getColor(fullHistory[recentIndex]);
-      const baselineRate = estimateBaselineRate(fullHistory);
-
-      if (bestStats.matchCount >= 5 && bestStats.probability > baselineRate + 0.15) {
-        result.innerText = `✅ STREAK SIGNAL (${nextColor.toUpperCase()}): ${bestStats.successCount}/${bestStats.matchCount} (${(bestStats.probability * 100).toFixed(1)}%) vs baseline ${(baselineRate * 100).toFixed(1)}%`;
-      } else if (bestStats.collapseProb > 0.6 && bestStats.matchCount >= 5) {
-        result.innerText = `⚠️ COLLAPSE WARNING – Suprotna boja moguća (${(bestStats.collapseProb * 100).toFixed(1)}%)`;
-      } else {
-        result.innerText = "❌ Nema validnog signala u ovom trenutku.";
-      }
+      result.innerText = "❌ Nema validnog signala u ovom trenutku.";
     }
   </script>
 </body>
